@@ -7,7 +7,7 @@
 
 
 
-## Kinematics (Single Harmonic Motion)
+## Kinematics (Simple Harmonic Motion)
 
 Assuming that the angular velocity and the radius of the SHM system is constant.
 
