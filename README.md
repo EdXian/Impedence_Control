@@ -33,5 +33,6 @@ ay_2 = ay_d + (1 / mass) * ( damping * (v_yd - vy_2 ) + spring* (posy_d - posy2 
 ## Explaination
 
 
-![image](video.gif)
+![Alt Text](video.gif)
+
 
