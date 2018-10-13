@@ -66,6 +66,8 @@ MainWindow::MainWindow(QWidget *parent) :
     path_data.resize(500);
     timer = new QTimer(this);
     connect( timer,SIGNAL(timeout()) ,this ,SLOT(update()));
+    connect(ui->customplot, SIGNAL(mousePress(QMouseEvent*)),this,SLOT(mouseClick(QMouseEvent*)));
+    connect(ui->customplot, SIGNAL(mouseRelease(QMouseEvent*)),this,SLOT(mouseClick(QMouseEvent*)));
     connect(ui->customplot, SIGNAL(mouseMove(QMouseEvent*)),this,SLOT(mouseClick(QMouseEvent*)));
 
     timer->start(50);
@@ -95,10 +97,6 @@ void MainWindow::mouseClick(QMouseEvent *event){
         forcex = 0;
         forcey = 0;
     }
-
-
-
-
 }
 
 void MainWindow::update(){
@@ -160,6 +158,7 @@ void MainWindow::update(){
     pen.setColor(Qt::blue);
     pen.setWidth(7);
     pen.setStyle(Qt::DashLine);
+
     path2->setPen(pen);
 
    // path2->setLineStyle(QCPCurve::LineStyle::);
