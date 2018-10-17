@@ -50,13 +50,13 @@ vx =  - omega * r * sin(theta)
 
 vy =  omega *r *cos(theta)
 
-ax = - omega *omega *r * cos(theta)
+ax = - omega *omega *r * cos(theta)    //the original acceleration of the masspoint
 
-ay = -omega * omega *r *sin(theta)
+ay = -omega * omega *r *sin(theta)	//the original acceleration of the masspoint
 
 
-//impedance Control
-ax_2 = ax_d + (1 / mass) * ( damping * (v_xd - vx_2 ) + spring* (posx_d - posx2 ) +forcex);
+//impedance Control 
+ax_2 = ax_d + (1 / mass) * ( damping * (v_xd - vx_2 ) + spring* (posx_d - posx2 ) +forcex); // the final accerleration of the masspoint
 
 ay_2 = ay_d + (1 / mass) * ( damping * (v_yd - vy_2 ) + spring* (posy_d - posy2 ) +forcey);
 

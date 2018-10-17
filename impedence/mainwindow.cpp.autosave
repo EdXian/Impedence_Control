@@ -1,0 +1,217 @@
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+
+MainWindow::MainWindow(QWidget *parent) :
+    QMainWindow(parent),
+    ui(new Ui::MainWindow)
+{
+
+    ui->setupUi(this);
+    this->setWindowTitle("Impedence Control");
+    circle = new QCPCurve(ui->customplot->xAxis, ui->customplot->yAxis);
+    path = new QCPCurve(ui->customplot->xAxis , ui->customplot->yAxis);
+    path2 = new QCPCurve(ui->customplot->xAxis , ui->customplot->yAxis)   ;
+    ui->customplot->legend->setVisible(true);
+    ui->customplot->axisRect()->setupFullAxesBox(true);
+    item = new QCPItemLine(ui->customplot);
+
+    item->setVisible(false);
+
+
+
+    path->setName("Desired trajectory");
+    path2->setName("Actual trajectory");
+    circle->removeFromLegend();
+
+
+
+    // ui->customplot->setInteraction(QCP::iRangeDrag | QCP::iRangeZoom ,true);
+    //ui->customplot->setInteractions(QCP::iSelectAxes | QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectPlottables);
+    ui->customplot->xAxis->setLabel("displacement x");
+    ui->customplot->yAxis->setLabel("displacement y");
+
+
+    ui->customplot->xAxis->setRange(-10, 10);
+    ui->customplot->yAxis->setRange(-10, 10);
+    ui->customplot->replot();
+
+    //Initial condition
+    omega = 1;
+    posx = 3*cos(0);
+    posy = 3*sin(0);
+    posx2 = 3*cos(0);
+    posy2 = 3*sin(0);
+    theta = atan2(posy,posx);
+    forcex = 0;
+    forcey = 0;
+    v_x = 0;
+    v_y = omega * 3 * cos(theta);
+    vx_2 = 0;
+    vy_2 = omega * 3 * cos(theta);
+    mass =1;
+    damping=0.5;
+    spring =3.0;
+    force_gain = 1.0;
+    interaction_time = 0.5;
+
+    ui->virtual_mass_SpinBox->setValue(1.0);
+    ui->virtual_damping_SpinBox->setValue(0.5);
+    ui->virtual_spring_SpinBox->setValue(3.0);
+    ui->force_gain_SpinBox->setValue(1.0);
+
+    data.clear();
+    path_data.clear();
+    data.resize(100);
+    path_data.resize(500);
+    timer = new QTimer(this);
+    connect( timer,SIGNAL(timeout()) ,this ,SLOT(update()));
+    connect(ui->customplot, SIGNAL(mousePress(QMouseEvent*)),this,SLOT(mouseClick(QMouseEvent*)));
+    connect(ui->customplot, SIGNAL(mouseRelease(QMouseEvent*)),this,SLOT(mouseClick(QMouseEvent*)));
+    connect(ui->customplot, SIGNAL(mouseMove(QMouseEvent*)),this,SLOT(mouseClick(QMouseEvent*)));
+
+    timer->start(50);
+
+}
+
+
+void MainWindow::mouseClick(QMouseEvent *event){
+
+    if(event->buttons() == Qt::LeftButton){
+        mouse_corx = this->ui->customplot->xAxis->pixelToCoord(event->pos().x());
+        mouse_cory = this->ui->customplot->yAxis->pixelToCoord(event->pos().y());
+        std::cout <<  " x " <<mouse_corx << "y" << mouse_cory <<std::endl;
+
+        item->start->setCoords(posx2,posy2);
+        item->end->setCoords(mouse_corx,mouse_cory);
+        forcex =force_gain*( mouse_corx - posx2) ;
+        forcey =force_gain*( mouse_cory - posy2) ;
+        item->setHead(QCPLineEnding::esSpikeArrow);
+        QPen pen;
+        pen.setColor(Qt::green);
+        pen.setWidth(10);
+        item->setPen(pen);
+        item->setVisible(true);
+    }else{
+        item->setVisible(false);
+        forcex = 0;
+        forcey = 0;
+    }
+}
+
+void MainWindow::update(){
+    dt+=0.1;
+    path_data.push_back(QCPCurveData(path_data.size(),posx, posy));
+    path_data2.push_back(QCPCurveData(path_data2.size(),posx2, posy2));
+
+    if(path_data.size() > 500){
+        path_data.pop_front();
+    }
+    if(path_data2.size() > 200){
+        path_data2.pop_front();
+    }
+
+    theta = atan2(posy,posx);
+
+
+    a_x = -1* omega *omega *3 *cos(theta);
+    a_y = - omega*omega*3*sin(theta);
+
+    v_x += a_x * 0.02;
+    v_y += a_y * 0.02;
+
+    posx += v_x * 0.02;
+    posy += v_y * 0.02;
+
+   // forcex = 0 ; forcey = 0;
+
+    ax_2 = a_x + (1 / mass) * ( damping * (v_x - vx_2) + spring* (posx - posx2 ) +forcex);
+    ay_2 = a_y + (1 / mass) * ( damping * (v_y - vy_2) + spring* (posy - posy2 ) +forcey);
+
+
+    vx_2 += ax_2 *0.02;
+    vy_2 += ay_2 *0.02;
+
+    posx2 += vx_2*0.02;
+    posy2 += vy_2*0.02;
+
+
+    for(int i=0;i<100;i++){
+        data[i] = QCPCurveData(i,cos((2*3.14159/100)*i)+posx2, sin((2*3.14159/100)*i)+posy2);
+    }
+    ui->actual_force_x_label->setText(QString("FORCEX: ") + QString::number(forcex));
+    ui->actual_force_y_label->setText(QString("FORCEY: ") +QString::number(forcey));
+
+    circle->data()->set(data,true);
+    path->data()->set(path_data,true);
+    path2->data()->set(path_data2 , true);
+
+
+    QPen  pen;
+
+    pen.setColor(Qt::black);
+    circle->setPen(pen);
+
+    pen.setColor(Qt::red);
+    path->setPen(pen);
+
+    pen.setColor(Qt::blue);
+    pen.setWidth(7);
+    pen.setStyle(Qt::DashLine);
+
+    path2->setPen(pen);
+
+   // path2->setLineStyle(QCPCurve::LineStyle::);
+
+    path->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 5));
+    //path2->setScatterStyle(QCPScatterStyle(QCPScatterStyle::ssDisc, 5));
+
+    ui->customplot->replot();
+
+}
+
+
+
+
+MainWindow::~MainWindow()
+{
+
+
+    delete ui;
+}
+
+
+
+
+
+void MainWindow::on_forcey_SpinBox_editingFinished()
+{
+    forcey = ui->forcey_SpinBox->text().toDouble();
+    std::cout<<"ok" <<std::endl;
+}
+
+void MainWindow::on_forcex_SpinBox_editingFinished()
+{
+    forcex = ui->forcex_SpinBox->text().toDouble();
+
+}
+
+void MainWindow::on_virtual_mass_SpinBox_editingFinished()
+{
+    mass  = ui->virtual_mass_SpinBox->text().toDouble();
+}
+
+void MainWindow::on_virtual_damping_SpinBox_editingFinished()
+{
+        damping = ui->virtual_damping_SpinBox->text().toDouble();
+}
+
+void MainWindow::on_virtual_spring_SpinBox_editingFinished()
+{
+    spring = ui->virtual_spring_SpinBox->text().toDouble();
+}
+
+
+void MainWindow::on_force_gain_SpinBox_editingFinished()
+{
+    force_gain = ui->force_gain_SpinBox->text().toDouble();
+}
